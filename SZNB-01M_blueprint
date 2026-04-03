@@ -1,12 +1,10 @@
 blueprint:
-  name: SONOFF Orb 4-In-1 (SNZB-01M) - Zigbee2MQTT Event Blueprint v2
+  name: SONOFF Orb 4-In-1 (SNZB-01M) - Zigbee2MQTT MQTT Blueprint
   description: >
-    Blueprint for the SONOFF Orb 4-In-1 Zigbee Smart Scene Button (SNZB-01M)
-    using Zigbee2MQTT event entities.
+    Blueprint for the SONOFF SNZB-01M using the raw Zigbee2MQTT MQTT JSON topic.
 
-    Fixes single-press firing during double/triple presses by delaying single
-    actions briefly and using automation mode restart so later events supersede
-    pending single actions.
+    This version avoids Home Assistant event entities and instead listens directly
+    to the Zigbee2MQTT published state topic, matching the `action` property.
 
     Button mapping:
       - Button 1 = top-left
@@ -14,34 +12,31 @@ blueprint:
       - Button 3 = bottom-left
       - Button 4 = bottom-right
 
-    Supported actions:
-      - single
-      - double
-      - triple
-      - long
+    Use the base Zigbee2MQTT topic for the remote, e.g.:
+      zigbee2mqtt/living_room_orb
 
-    Requires Zigbee2MQTT event entities enabled.
+    Do NOT use:
+      zigbee2mqtt/living_room_orb/set
 
   domain: automation
 
   input:
-    remote_event:
-      name: SNZB-01M event entity
-      description: Usually event.<device_name>_action
+    mqtt_topic:
+      name: Zigbee2MQTT topic
+      description: Base Zigbee2MQTT topic for this remote, e.g. zigbee2mqtt/living_room_orb
       selector:
-        entity:
-          domain: event
+        text: {}
 
-    single_press_delay_ms:
-      name: Single press delay
+    multi_press_window_ms:
+      name: Multi-press window
       description: >
-        Delay before executing a single-press action. This prevents single
-        actions from firing when you intended a double or triple press.
-      default: 450
+        Time window used to arbitrate single vs double vs triple press.
+        Increase if the device still feels too eager to classify a press as single.
+      default: 800
       selector:
         number:
-          min: 150
-          max: 1000
+          min: 200
+          max: 1500
           step: 50
           unit_of_measurement: ms
           mode: box
@@ -130,117 +125,405 @@ blueprint:
       selector:
         action: {}
 
-mode: restart
-max_exceeded: silent
+trigger_variables:
+  mqtt_topic: !input mqtt_topic
 
 trigger:
-  - platform: state
-    entity_id: !input remote_event
-    not_from:
-      - unavailable
-      - unknown
-    not_to:
-      - unavailable
-      - unknown
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "single_button_1"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b1_single
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "double_button_1"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b1_double
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "triple_button_1"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b1_triple
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "long_button_1"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b1_long
 
-variables:
-  event_type: "{{ trigger.to_state.attributes.event_type | default('') }}"
-  single_delay: !input single_press_delay_ms
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "single_button_2"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b2_single
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "double_button_2"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b2_double
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "triple_button_2"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b2_triple
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "long_button_2"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b2_long
 
-condition:
-  - condition: template
-    value_template: "{{ event_type != '' }}"
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "single_button_3"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b3_single
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "double_button_3"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b3_double
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "triple_button_3"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b3_triple
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "long_button_3"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b3_long
+
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "single_button_4"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b4_single
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "double_button_4"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b4_double
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "triple_button_4"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b4_triple
+  - platform: mqtt
+    topic: "{{ mqtt_topic }}"
+    payload: "long_button_4"
+    value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+    id: b4_long
+
+condition: []
 
 action:
   - choose:
+      # --------------------
+      # Button 1
+      # --------------------
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'single_button_1' }}"
+            value_template: "{{ trigger.id == 'b1_single' }}"
         sequence:
-          - delay:
-              milliseconds: !input single_press_delay_ms
-          - sequence: !input button_1_single
+          - wait_for_trigger:
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "double_button_1"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b1_double_followup
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "triple_button_1"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b1_triple_followup
+            timeout:
+              milliseconds: !input multi_press_window_ms
+            continue_on_timeout: true
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b1_triple_followup' }}"
+                sequence: !input button_1_triple
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b1_double_followup' }}"
+                sequence:
+                  - wait_for_trigger:
+                      - platform: mqtt
+                        topic: "{{ mqtt_topic }}"
+                        payload: "triple_button_1"
+                        value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                        id: b1_triple_after_double
+                    timeout:
+                      milliseconds: !input multi_press_window_ms
+                    continue_on_timeout: true
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ wait.completed and wait.trigger.id == 'b1_triple_after_double' }}"
+                        sequence: !input button_1_triple
+                    default: !input button_1_double
+            default: !input button_1_single
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'double_button_1' }}"
-        sequence: !input button_1_double
+            value_template: "{{ trigger.id == 'b1_double' }}"
+        sequence:
+          - wait_for_trigger:
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "triple_button_1"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b1_triple_after_direct_double
+            timeout:
+              milliseconds: !input multi_press_window_ms
+            continue_on_timeout: true
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b1_triple_after_direct_double' }}"
+                sequence: !input button_1_triple
+            default: !input button_1_double
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'triple_button_1' }}"
+            value_template: "{{ trigger.id == 'b1_triple' }}"
         sequence: !input button_1_triple
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'long_button_1' }}"
+            value_template: "{{ trigger.id == 'b1_long' }}"
         sequence: !input button_1_long
 
+      # --------------------
+      # Button 2
+      # --------------------
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'single_button_2' }}"
+            value_template: "{{ trigger.id == 'b2_single' }}"
         sequence:
-          - delay:
-              milliseconds: !input single_press_delay_ms
-          - sequence: !input button_2_single
+          - wait_for_trigger:
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "double_button_2"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b2_double_followup
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "triple_button_2"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b2_triple_followup
+            timeout:
+              milliseconds: !input multi_press_window_ms
+            continue_on_timeout: true
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b2_triple_followup' }}"
+                sequence: !input button_2_triple
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b2_double_followup' }}"
+                sequence:
+                  - wait_for_trigger:
+                      - platform: mqtt
+                        topic: "{{ mqtt_topic }}"
+                        payload: "triple_button_2"
+                        value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                        id: b2_triple_after_double
+                    timeout:
+                      milliseconds: !input multi_press_window_ms
+                    continue_on_timeout: true
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ wait.completed and wait.trigger.id == 'b2_triple_after_double' }}"
+                        sequence: !input button_2_triple
+                    default: !input button_2_double
+            default: !input button_2_single
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'double_button_2' }}"
-        sequence: !input button_2_double
+            value_template: "{{ trigger.id == 'b2_double' }}"
+        sequence:
+          - wait_for_trigger:
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "triple_button_2"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b2_triple_after_direct_double
+            timeout:
+              milliseconds: !input multi_press_window_ms
+            continue_on_timeout: true
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b2_triple_after_direct_double' }}"
+                sequence: !input button_2_triple
+            default: !input button_2_double
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'triple_button_2' }}"
+            value_template: "{{ trigger.id == 'b2_triple' }}"
         sequence: !input button_2_triple
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'long_button_2' }}"
+            value_template: "{{ trigger.id == 'b2_long' }}"
         sequence: !input button_2_long
 
+      # --------------------
+      # Button 3
+      # --------------------
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'single_button_3' }}"
+            value_template: "{{ trigger.id == 'b3_single' }}"
         sequence:
-          - delay:
-              milliseconds: !input single_press_delay_ms
-          - sequence: !input button_3_single
+          - wait_for_trigger:
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "double_button_3"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b3_double_followup
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "triple_button_3"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b3_triple_followup
+            timeout:
+              milliseconds: !input multi_press_window_ms
+            continue_on_timeout: true
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b3_triple_followup' }}"
+                sequence: !input button_3_triple
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b3_double_followup' }}"
+                sequence:
+                  - wait_for_trigger:
+                      - platform: mqtt
+                        topic: "{{ mqtt_topic }}"
+                        payload: "triple_button_3"
+                        value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                        id: b3_triple_after_double
+                    timeout:
+                      milliseconds: !input multi_press_window_ms
+                    continue_on_timeout: true
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ wait.completed and wait.trigger.id == 'b3_triple_after_double' }}"
+                        sequence: !input button_3_triple
+                    default: !input button_3_double
+            default: !input button_3_single
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'double_button_3' }}"
-        sequence: !input button_3_double
+            value_template: "{{ trigger.id == 'b3_double' }}"
+        sequence:
+          - wait_for_trigger:
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "triple_button_3"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b3_triple_after_direct_double
+            timeout:
+              milliseconds: !input multi_press_window_ms
+            continue_on_timeout: true
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b3_triple_after_direct_double' }}"
+                sequence: !input button_3_triple
+            default: !input button_3_double
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'triple_button_3' }}"
+            value_template: "{{ trigger.id == 'b3_triple' }}"
         sequence: !input button_3_triple
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'long_button_3' }}"
+            value_template: "{{ trigger.id == 'b3_long' }}"
         sequence: !input button_3_long
 
+      # --------------------
+      # Button 4
+      # --------------------
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'single_button_4' }}"
+            value_template: "{{ trigger.id == 'b4_single' }}"
         sequence:
-          - delay:
-              milliseconds: !input single_press_delay_ms
-          - sequence: !input button_4_single
+          - wait_for_trigger:
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "double_button_4"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b4_double_followup
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "triple_button_4"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b4_triple_followup
+            timeout:
+              milliseconds: !input multi_press_window_ms
+            continue_on_timeout: true
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b4_triple_followup' }}"
+                sequence: !input button_4_triple
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b4_double_followup' }}"
+                sequence:
+                  - wait_for_trigger:
+                      - platform: mqtt
+                        topic: "{{ mqtt_topic }}"
+                        payload: "triple_button_4"
+                        value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                        id: b4_triple_after_double
+                    timeout:
+                      milliseconds: !input multi_press_window_ms
+                    continue_on_timeout: true
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ wait.completed and wait.trigger.id == 'b4_triple_after_double' }}"
+                        sequence: !input button_4_triple
+                    default: !input button_4_double
+            default: !input button_4_single
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'double_button_4' }}"
-        sequence: !input button_4_double
+            value_template: "{{ trigger.id == 'b4_double' }}"
+        sequence:
+          - wait_for_trigger:
+              - platform: mqtt
+                topic: "{{ mqtt_topic }}"
+                payload: "triple_button_4"
+                value_template: "{{ value_json.action if value_json.action is defined else '' }}"
+                id: b4_triple_after_direct_double
+            timeout:
+              milliseconds: !input multi_press_window_ms
+            continue_on_timeout: true
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed and wait.trigger.id == 'b4_triple_after_direct_double' }}"
+                sequence: !input button_4_triple
+            default: !input button_4_double
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'triple_button_4' }}"
+            value_template: "{{ trigger.id == 'b4_triple' }}"
         sequence: !input button_4_triple
 
       - conditions:
           - condition: template
-            value_template: "{{ event_type == 'long_button_4' }}"
+            value_template: "{{ trigger.id == 'b4_long' }}"
         sequence: !input button_4_long
+
+mode: single
+max_exceeded: silent
