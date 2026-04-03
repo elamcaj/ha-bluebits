@@ -1,8 +1,12 @@
 blueprint:
-  name: SONOFF Orb 4-In-1 (SNZB-01M) - Zigbee2MQTT Event Blueprint
+  name: SONOFF Orb 4-In-1 (SNZB-01M) - Zigbee2MQTT Event Blueprint v2
   description: >
     Blueprint for the SONOFF Orb 4-In-1 Zigbee Smart Scene Button (SNZB-01M)
     using Zigbee2MQTT event entities.
+
+    Fixes single-press firing during double/triple presses by delaying single
+    actions briefly and using automation mode restart so later events supersede
+    pending single actions.
 
     Button mapping:
       - Button 1 = top-left
@@ -16,36 +20,47 @@ blueprint:
       - triple
       - long
 
-    Requires Zigbee2MQTT event entities enabled in:
-      Zigbee2MQTT -> Settings -> Home Assistant integration
+    Requires Zigbee2MQTT event entities enabled.
 
   domain: automation
+
   input:
     remote_event:
       name: SNZB-01M event entity
-      description: Select the Zigbee2MQTT event entity for this remote, usually something like event.<device_name>_action
+      description: Usually event.<device_name>_action
       selector:
         entity:
           domain: event
+
+    single_press_delay_ms:
+      name: Single press delay
+      description: >
+        Delay before executing a single-press action. This prevents single
+        actions from firing when you intended a double or triple press.
+      default: 450
+      selector:
+        number:
+          min: 150
+          max: 1000
+          step: 50
+          unit_of_measurement: ms
+          mode: box
 
     button_1_single:
       name: Button 1 single press
       default: []
       selector:
         action: {}
-
     button_1_double:
       name: Button 1 double press
       default: []
       selector:
         action: {}
-
     button_1_triple:
       name: Button 1 triple press
       default: []
       selector:
         action: {}
-
     button_1_long:
       name: Button 1 long press
       default: []
@@ -57,19 +72,16 @@ blueprint:
       default: []
       selector:
         action: {}
-
     button_2_double:
       name: Button 2 double press
       default: []
       selector:
         action: {}
-
     button_2_triple:
       name: Button 2 triple press
       default: []
       selector:
         action: {}
-
     button_2_long:
       name: Button 2 long press
       default: []
@@ -81,19 +93,16 @@ blueprint:
       default: []
       selector:
         action: {}
-
     button_3_double:
       name: Button 3 double press
       default: []
       selector:
         action: {}
-
     button_3_triple:
       name: Button 3 triple press
       default: []
       selector:
         action: {}
-
     button_3_long:
       name: Button 3 long press
       default: []
@@ -105,26 +114,23 @@ blueprint:
       default: []
       selector:
         action: {}
-
     button_4_double:
       name: Button 4 double press
       default: []
       selector:
         action: {}
-
     button_4_triple:
       name: Button 4 triple press
       default: []
       selector:
         action: {}
-
     button_4_long:
       name: Button 4 long press
       default: []
       selector:
         action: {}
 
-mode: queued
+mode: restart
 max_exceeded: silent
 
 trigger:
@@ -139,6 +145,7 @@ trigger:
 
 variables:
   event_type: "{{ trigger.to_state.attributes.event_type | default('') }}"
+  single_delay: !input single_press_delay_ms
 
 condition:
   - condition: template
@@ -149,7 +156,10 @@ action:
       - conditions:
           - condition: template
             value_template: "{{ event_type == 'single_button_1' }}"
-        sequence: !input button_1_single
+        sequence:
+          - delay:
+              milliseconds: !input single_press_delay_ms
+          - sequence: !input button_1_single
 
       - conditions:
           - condition: template
@@ -169,7 +179,10 @@ action:
       - conditions:
           - condition: template
             value_template: "{{ event_type == 'single_button_2' }}"
-        sequence: !input button_2_single
+        sequence:
+          - delay:
+              milliseconds: !input single_press_delay_ms
+          - sequence: !input button_2_single
 
       - conditions:
           - condition: template
@@ -189,7 +202,10 @@ action:
       - conditions:
           - condition: template
             value_template: "{{ event_type == 'single_button_3' }}"
-        sequence: !input button_3_single
+        sequence:
+          - delay:
+              milliseconds: !input single_press_delay_ms
+          - sequence: !input button_3_single
 
       - conditions:
           - condition: template
@@ -209,7 +225,10 @@ action:
       - conditions:
           - condition: template
             value_template: "{{ event_type == 'single_button_4' }}"
-        sequence: !input button_4_single
+        sequence:
+          - delay:
+              milliseconds: !input single_press_delay_ms
+          - sequence: !input button_4_single
 
       - conditions:
           - condition: template
